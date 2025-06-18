@@ -5,23 +5,12 @@ on:
     branches: [main]
 
 jobs:
-  deploy-backend:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Deploy Backend
+      - name: Deploy to Render
         uses: render-actions/deploy@v1
         with:
-          service-id: ${{ secrets.RENDER_BACKEND_ID }}
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
-          
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy Frontend
-        uses: render-actions/deploy@v1
-        with:
-          service-id: ${{ secrets.RENDER_FRONTEND_ID }}
-          api-key: ${{ secrets.RENDER_API_KEY }}
-          root-directory: backend  # Add this line
