@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 import PyPDF2
 from pathlib import Path
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,40 +24,76 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Base directory - fixed path
-BASE_DIR = Path("/app")
-FRONTEND_BUILD = BASE_DIR / "frontend_build"
-logger.info(f"Using fixed frontend path: {FRONTEND_BUILD}")
+# Enhanced debug info at startup
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting PolicyInsight AI server")
+    
+    # Base directory - fixed path
+    base_dir = Path("/app")
+    logger.info(f"Base directory: {base_dir}")
+    
+    # List root directory contents
+    try:
+        root_contents = os.listdir("/")
+        logger.info(f"Root directory contents: {root_contents}")
+    except Exception as e:
+        logger.error(f"Error listing root directory: {str(e)}")
+    
+    # Check application directory
+    try:
+        app_contents = os.listdir("/app")
+        logger.info(f"/app directory contents: {app_contents}")
+    except Exception as e:
+        logger.error(f"Error listing /app directory: {str(e)}")
+    
+    # Verify frontend build location
+    frontend_build_path = base_dir / "frontend_build"
+    logger.info(f"Frontend build path: {frontend_build_path}")
+    
+    if frontend_build_path.exists():
+        logger.info(f"Frontend build found! Contents: {os.listdir(frontend_build_path)}")
+        static_files = StaticFiles(directory=str(frontend_build_path))
+        app.mount("/", static_files, name="frontend")
+        logger.info("Frontend mounted successfully")
+    else:
+        logger.error(f"Frontend build not found at: {frontend_build_path}")
 
-# Serve frontend build - only if exists
-if FRONTEND_BUILD.exists() and FRONTEND_BUILD.is_dir():
-    # FIXED: Corrected parentheses
-    static_files = StaticFiles(directory=str(FRONTEND_BUILD))
-    app.mount("/", static_files, name="frontend")
-    logger.info(f"Serving frontend from: {FRONTEND_BUILD}")
+# Serve frontend if exists
+@app.get("/")
+async def serve_frontend_or_fallback():
+    frontend_path = Path("/app/frontend_build/index.html")
     
-    @app.get("/favicon.ico")
-    async def get_favicon():
-        return FileResponse(FRONTEND_BUILD / "favicon.ico")
-else:
-    logger.error(f"Frontend build not found at: {FRONTEND_BUILD}")
+    if frontend_path.exists():
+        return FileResponse(frontend_path)
     
-    @app.get("/")
-    async def fallback_frontend():
-        return HTMLResponse("""
-        <html>
-            <head><title>PolicyInsight AI</title></head>
-            <body>
-                <h1>PolicyInsight AI</h1>
-                <p>Frontend is building or missing. PDF API is available at /api/analyze</p>
-                <p>Debug info: 
-                    <br>Base dir: /app
-                    <br>Frontend path: /app/frontend_build
-                    <br>Exists: """ + str(FRONTEND_BUILD.exists()) + """
-                </p>
-            </body>
-        </html>
-        """)
+    return HTMLResponse(f"""
+    <html>
+        <head><title>PolicyInsight AI</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1>PolicyInsight AI</h1>
+            <p>Frontend is building or missing. PDF API is available at /api/analyze</p>
+            
+            <h3>Debug Information</h3>
+            <pre>
+Base directory: /app
+Frontend path: /app/frontend_build
+Exists: {frontend_path.exists()}
+
+Directory contents:
+{os.listdir('/app') if Path('/app').exists() else 'Directory /app not found'}
+            </pre>
+        </body>
+    </html>
+    """)
+
+# Favicon endpoint
+@app.get("/favicon.ico")
+async def get_favicon():
+    favicon_path = Path("/app/frontend_build/favicon.ico")
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    return JSONResponse({"error": "Favicon not found"}, status_code=404)
 
 # Health check
 @app.get("/health")
