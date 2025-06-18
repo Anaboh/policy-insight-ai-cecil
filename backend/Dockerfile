@@ -10,19 +10,17 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 # Set working directory
 WORKDIR /app
 
-# First copy only package.json to cache npm install
-COPY frontend/package.json /app/frontend/
-WORKDIR /app/frontend
-RUN npm install
-
-# Copy frontend source
+# Copy frontend files
 COPY frontend /app/frontend
 
-# Build frontend and verify
-RUN npm run build && \
-    mkdir -p /app/frontend_build && \
+# Build frontend
+WORKDIR /app/frontend
+RUN npm install && npm run build
+
+# Create frontend build directory
+RUN mkdir -p /app/frontend_build && \
     mv build/* /app/frontend_build/ && \
-    echo "Frontend build completed. Contents:" && \
+    echo "Frontend build contents:" && \
     ls -la /app/frontend_build
 
 # Set up backend
@@ -32,6 +30,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY backend /app/backend
+
+# Verify final structure
+RUN echo "Final /app contents:" && \
+    ls -la /app && \
+    echo "Frontend build contents:" && \
+    ls -la /app/frontend_build
 
 # Set working directory to backend
 WORKDIR /app/backend
