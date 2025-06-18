@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y curl build-essential
+RUN apt-get update && apt-get install -y curl build-essential git
 
 # Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -14,24 +14,26 @@ WORKDIR /app
 COPY frontend /app/frontend
 
 # Build frontend
-WORKDIR /app/frontend
-RUN npm install
-RUN npm run build
-
-# Move build to backend directory
-RUN mkdir -p /app/backend/frontend_build
-RUN mv build/* /app/backend/frontend_build/
+RUN cd frontend && \
+    npm install && \
+    npm run build && \
+    mkdir -p /app/frontend_build && \
+    mv build/* /app/frontend_build/
 
 # Set up backend
-WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY backend /app/backend
 
+# Create final app directory with all components
+RUN mkdir -p /app/final && \
+    mv /app/backend/* /app/final/ && \
+    mv /app/frontend_build /app/final/
+
 # Set final working directory
-WORKDIR /app/backend
+WORKDIR /app/final
 
 # Expose port and run server
 EXPOSE 8000
