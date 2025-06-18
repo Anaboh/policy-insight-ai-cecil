@@ -4,7 +4,7 @@ import requests
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 import PyPDF2
 from pathlib import Path
 import logging
@@ -23,15 +23,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Base directory
-BASE_DIR = Path(__file__).parent.resolve()
-logger.info(f"Base directory: {BASE_DIR}")
-
-# Serve frontend build
+# Base directory - fixed path
+BASE_DIR = Path("/app")
 FRONTEND_BUILD = BASE_DIR / "frontend_build"
+logger.info(f"Using fixed frontend path: {FRONTEND_BUILD}")
+
+# Serve frontend build - only if exists
 if FRONTEND_BUILD.exists() and FRONTEND_BUILD.is_dir():
-    app.mount("/", StaticFiles(directory=FRONTEND_BUILD, html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=str(FRONTEND_BUILD), name="frontend")
     logger.info(f"Serving frontend from: {FRONTEND_BUILD}")
+    
+    @app.get("/favicon.ico")
+    async def get_favicon():
+        return FileResponse(FRONTEND_BUILD / "favicon.ico")
 else:
     logger.error(f"Frontend build not found at: {FRONTEND_BUILD}")
     
@@ -43,17 +47,14 @@ else:
             <body>
                 <h1>PolicyInsight AI</h1>
                 <p>Frontend is building or missing. PDF API is available at /api/analyze</p>
+                <p>Debug info: 
+                    <br>Base dir: /app
+                    <br>Frontend path: /app/frontend_build
+                    <br>Exists: """ + str(FRONTEND_BUILD.exists()) + """
+                </p>
             </body>
         </html>
         """)
-
-# Favicon endpoint
-@app.get("/favicon.ico")
-async def get_favicon():
-    favicon_path = FRONTEND_BUILD / "favicon.ico"
-    if favicon_path.exists():
-        return FileResponse(favicon_path)
-    return JSONResponse({"error": "Favicon not found"}, status_code=404)
 
 # Health check
 @app.get("/health")
@@ -89,7 +90,7 @@ def generate_insights(text):
     
     prompt = f"""
     As a senior policy advisor, create a briefing from this document:
-    {text[:12000]}  # Conservative token limit
+    {text[:12000]}
     
     Structure your response with these sections:
     ## Executive Summary
