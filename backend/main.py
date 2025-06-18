@@ -31,7 +31,8 @@ logger.info(f"Using fixed frontend path: {FRONTEND_BUILD}")
 # Serve frontend build - only if exists
 if FRONTEND_BUILD.exists() and FRONTEND_BUILD.is_dir():
     # FIXED: Corrected parentheses
-    app.mount("/", StaticFiles(directory=str(FRONTEND_BUILD), name="frontend")
+    static_files = StaticFiles(directory=str(FRONTEND_BUILD))
+    app.mount("/", static_files, name="frontend")
     logger.info(f"Serving frontend from: {FRONTEND_BUILD}")
     
     @app.get("/favicon.ico")
