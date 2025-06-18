@@ -7,6 +7,9 @@ function App() {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Get API URL from environment or use relative path
+  const API_URL = process.env.REACT_APP_API_URL || '/api/analyze';
 
   const handleUpload = async (file) => {
     setLoading(true);
@@ -16,7 +19,7 @@ function App() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('/api/analyze', {
+      const response = await fetch(API_URL, {
         method: 'POST',
         body: formData
       });
