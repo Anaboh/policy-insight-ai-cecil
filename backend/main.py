@@ -4,9 +4,14 @@ import requests
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 import PyPDF2
 from pathlib import Path
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("PolicyInsight")
 
 app = FastAPI()
 
@@ -18,28 +23,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Path configuration
-current_dir = Path(__file__).parent
-frontend_build = current_dir / "frontend_build"
+# Base directory
+BASE_DIR = Path(__file__).parent.resolve()
+logger.info(f"Base directory: {BASE_DIR}")
 
-# Check and serve frontend
-if frontend_build.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_build), html=True), name="frontend")
-    print(f"✅ Frontend build found at {frontend_build}")
+# Serve frontend build
+FRONTEND_BUILD = BASE_DIR / "frontend_build"
+if FRONTEND_BUILD.exists() and FRONTEND_BUILD.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_BUILD, html=True), name="frontend")
+    logger.info(f"Serving frontend from: {FRONTEND_BUILD}")
 else:
-    print(f"⚠️ Warning: Frontend build not found at {frontend_build}")
+    logger.error(f"Frontend build not found at: {FRONTEND_BUILD}")
     
     @app.get("/")
     async def fallback_frontend():
-        return HTMLResponse(content="<h1>PolicyInsight AI</h1><p>Frontend is building or missing. PDF API is available at /api/analyze</p>")
+        return HTMLResponse("""
+        <html>
+            <head><title>PolicyInsight AI</title></head>
+            <body>
+                <h1>PolicyInsight AI</h1>
+                <p>Frontend is building or missing. PDF API is available at /api/analyze</p>
+            </body>
+        </html>
+        """)
 
 # Favicon endpoint
 @app.get("/favicon.ico")
 async def get_favicon():
-    favicon_path = frontend_build / "favicon.ico"
+    favicon_path = FRONTEND_BUILD / "favicon.ico"
     if favicon_path.exists():
         return FileResponse(favicon_path)
-    return FileResponse("static/favicon.ico", status_code=404)
+    return JSONResponse({"error": "Favicon not found"}, status_code=404)
 
 # Health check
 @app.get("/health")
@@ -48,21 +62,25 @@ def health_check():
 
 # Get API key from environment
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+if not DEEPSEEK_API_KEY:
+    logger.error("DeepSeek API key not set in environment variables")
 
 def extract_text(pdf_file):
     try:
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_file))
         text = ""
         for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
+            page_text = page.extract_text() or ""
+            text += page_text + "\n"
+        return text.strip()
     except Exception as e:
+        logger.error(f"PDF extraction error: {str(e)}")
         raise HTTPException(400, f"PDF processing error: {str(e)}")
 
 def generate_insights(text):
     if not DEEPSEEK_API_KEY:
-        raise HTTPException(500, "DeepSeek API key not configured")
+        logger.error("DeepSeek API key missing")
+        raise HTTPException(500, "AI service not configured")
     
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
@@ -71,27 +89,40 @@ def generate_insights(text):
     
     prompt = f"""
     As a senior policy advisor, create a briefing from this document:
-    {text[:15000]}
+    {text[:12000]}  # Conservative token limit
     
-    Structure:
-    1. 3-sentence executive summary
-    2. Key impacts table (Sector | Severity | Affected Groups)
-    3. Urgency rating (1-5 stars)
-    4. Recommended next steps (3 bullet points)
+    Structure your response with these sections:
+    ## Executive Summary
+    [3-sentence summary]
+    
+    ## Key Impacts
+    [Table: Sector | Severity | Affected Groups]
+    
+    ## Urgency Assessment
+    [Rating: 1-5 stars with justification]
+    
+    ## Recommended Actions
+    [3 bullet points]
     """
     
     payload = {
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "max_tokens": 1000
+        "temperature": 0.5,
+        "max_tokens": 800
     }
     
     try:
-        response = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers)
+        response = requests.post(
+            "https://api.deepseek.com/v1/chat/completions", 
+            json=payload, 
+            headers=headers,
+            timeout=30
+        )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
+        logger.error(f"AI API error: {str(e)}")
         raise HTTPException(500, f"AI service error: {str(e)}")
 
 @app.post("/api/analyze")
@@ -99,17 +130,16 @@ async def analyze_pdf(file: UploadFile = File(...)):
     if file.content_type != "application/pdf":
         raise HTTPException(400, "Only PDF files accepted")
     
-    pdf_bytes = await file.read()
-    text = extract_text(pdf_bytes)
-    insights = generate_insights(text)
-    
-    return {"insights": insights}
-
-@app.on_event("startup")
-async def startup_event():
-    print("Starting PolicyInsight AI server")
-    print(f"Current directory: {current_dir}")
-    print(f"Frontend build path: {frontend_build}")
-    print(f"Build exists: {frontend_build.exists()}")
-    if frontend_build.exists():
-        print(f"Build contents: {list(frontend_build.glob('*'))}")
+    try:
+        logger.info(f"Processing PDF: {file.filename}")
+        pdf_bytes = await file.read()
+        text = extract_text(pdf_bytes)
+        logger.info(f"Extracted text: {len(text)} characters")
+        
+        insights = generate_insights(text)
+        logger.info("Insights generated successfully")
+        
+        return {"insights": insights}
+    except Exception as e:
+        logger.exception("PDF analysis failed")
+        raise HTTPException(500, f"Analysis failed: {str(e)}")
