@@ -3,10 +3,14 @@ import io
 import requests
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import PyPDF2
 
 app = FastAPI()
+
+# Serve frontend build
+app.mount("/", StaticFiles(directory="build", html=True), name="frontend")
 
 # Configure CORS
 app.add_middleware(
@@ -15,6 +19,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Favicon endpoint
+@app.get("/favicon.ico")
+async def get_favicon():
+    return FileResponse("build/favicon.ico")
+
+# Health check
+@app.get("/health")
+def health_check():
+    return {"status": "active", "service": "PolicyInsight AI"}
 
 # Get API key from environment
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -60,7 +74,7 @@ def generate_insights(text):
     
     return response.json()["choices"][0]["message"]["content"]
 
-@app.post("/analyze")
+@app.post("/api/analyze")
 async def analyze_pdf(file: UploadFile = File(...)):
     if file.content_type != "application/pdf":
         raise HTTPException(400, "Only PDF files accepted")
@@ -70,7 +84,3 @@ async def analyze_pdf(file: UploadFile = File(...)):
     insights = generate_insights(text)
     
     return {"insights": insights}
-
-@app.get("/")
-def health_check():
-    return {"status": "active", "service": "PolicyInsight AI"}
