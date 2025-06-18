@@ -5,12 +5,22 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Deploy to Render
+      - name: Deploy Backend
         uses: render-actions/deploy@v1
         with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          service-id: ${{ secrets.RENDER_BACKEND_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy Frontend
+        uses: render-actions/deploy@v1
+        with:
+          service-id: ${{ secrets.RENDER_FRONTEND_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
