@@ -16,13 +16,15 @@ function App() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const backendUrl = process.env.REACT_APP_API_URL || '/analyze';
-      const response = await fetch(backendUrl, {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData
       });
       
-      if (!response.ok) throw new Error('Analysis failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Analysis failed');
+      }
       
       const data = await response.json();
       setInsights(data.insights);
