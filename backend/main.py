@@ -30,7 +30,7 @@ logger.info(f"Using fixed frontend path: {FRONTEND_BUILD}")
 
 # Serve frontend build - only if exists
 if FRONTEND_BUILD.exists() and FRONTEND_BUILD.is_dir():
-    # FIXED: Removed extra parenthesis
+    # FIXED: Corrected parentheses
     app.mount("/", StaticFiles(directory=str(FRONTEND_BUILD), name="frontend")
     logger.info(f"Serving frontend from: {FRONTEND_BUILD}")
     
