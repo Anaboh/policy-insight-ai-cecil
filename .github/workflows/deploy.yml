@@ -24,3 +24,4 @@ jobs:
         with:
           service-id: ${{ secrets.RENDER_FRONTEND_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
+          root-directory: backend  # Add this line
