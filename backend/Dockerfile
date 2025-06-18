@@ -1,15 +1,14 @@
 FROM python:3.11-slim
 
-# Install Node.js and build dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y curl build-essential
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-RUN apt-get install -y nodejs
 
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# Set working directory
 WORKDIR /app
-
-# Copy backend requirements first for caching
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy frontend files
 COPY frontend /app/frontend
@@ -20,16 +19,20 @@ RUN npm install
 RUN npm run build
 
 # Move build to backend directory
-RUN mv build /app/backend/frontend_build
+RUN mkdir -p /app/backend/frontend_build
+RUN mv build/* /app/backend/frontend_build/
 
-# Copy backend source code
+# Set up backend
 WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
 COPY backend /app/backend
 
-# Create static directory for fallback favicon
-RUN mkdir -p /app/backend/static
-COPY frontend/public/favicon.ico /app/backend/static/
-
-EXPOSE 8000
+# Set final working directory
 WORKDIR /app/backend
+
+# Expose port and run server
+EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
