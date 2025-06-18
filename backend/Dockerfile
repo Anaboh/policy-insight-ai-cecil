@@ -7,22 +7,29 @@ RUN apt-get install -y nodejs
 
 WORKDIR /app
 
-# Copy and build frontend
-COPY frontend/package.json /app/frontend/
-COPY frontend/package-lock.json /app/frontend/  # Add if exists
-WORKDIR /app/frontend
-RUN npm install
-
-COPY frontend /app/frontend
-RUN npm run build
-RUN mv build /app/build
-
-# Backend setup
-WORKDIR /app
+# Copy backend requirements first for caching
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend /app
+# Copy frontend files
+COPY frontend /app/frontend
+
+# Build frontend
+WORKDIR /app/frontend
+RUN npm install
+RUN npm run build
+
+# Move build to backend directory
+RUN mv build /app/backend/frontend_build
+
+# Copy backend source code
+WORKDIR /app
+COPY backend /app/backend
+
+# Create static directory for fallback favicon
+RUN mkdir -p /app/backend/static
+COPY frontend/public/favicon.ico /app/backend/static/
 
 EXPOSE 8000
+WORKDIR /app/backend
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
