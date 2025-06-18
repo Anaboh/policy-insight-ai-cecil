@@ -24,7 +24,10 @@ export default function Uploader({ onUpload, loading }) {
       
       <div className="upload-content">
         {loading ? (
-          <div className="loader">Processing PDF...</div>
+          <div className="loader">
+            <div className="spinner"></div>
+            Processing PDF...
+          </div>
         ) : (
           <>
             <div className="upload-icon">📄</div>
