@@ -18,10 +18,12 @@ RUN npm install
 # Copy frontend source
 COPY frontend /app/frontend
 
-# Build frontend
+# Build frontend and verify
 RUN npm run build && \
     mkdir -p /app/frontend_build && \
-    mv build/* /app/frontend_build/
+    mv build/* /app/frontend_build/ && \
+    echo "Frontend build completed. Contents:" && \
+    ls -la /app/frontend_build
 
 # Set up backend
 WORKDIR /app
@@ -31,13 +33,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend /app/backend
 
-# Create final app directory with all components
-RUN mkdir -p /app/final && \
-    mv /app/backend/* /app/final/ && \
-    mv /app/frontend_build /app/final/
-
-# Set final working directory
-WORKDIR /app/final
+# Set working directory to backend
+WORKDIR /app/backend
 
 # Expose port and run server
 EXPOSE 8000
