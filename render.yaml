@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pdf-insight-backend
+    runtime: python
+    pythonVersion: "3.10.13"
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn backend.app:app --workers=2 --timeout 120 --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        value: your_api_key_here
