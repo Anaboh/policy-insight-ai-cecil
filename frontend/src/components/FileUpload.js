@@ -12,10 +12,19 @@ const FileUpload = ({ onAnalysisComplete }) => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('https://your-render-backend-url/upload', {
+      // Use Render URL in production, localhost in development
+      const backendUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://your-render-backend-url/upload' 
+        : 'http://localhost:5000/upload';
+        
+      const response = await fetch(backendUrl, {
         method: 'POST',
         body: formData
       });
+      
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
       
       const data = await response.json();
       onAnalysisComplete(data);
