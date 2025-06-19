@@ -1,12 +1,14 @@
 services:
   - type: web
-    name: pdf-insight-agent
+    name: pdf-insight-backend
     runtime: python
-    pythonVersion: "3.10.13"
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "gunicorn backend.app:app --workers=2 --timeout 120 --bind 0.0.0.0:$PORT"
+    pythonVersion: "3.10.13"  # Explicit version specification
+    buildCommand: |
+      python -m venv .venv
+      source .venv/bin/activate
+      pip install --upgrade pip
+      pip install -r src/backend/requirements.txt
+    startCommand: "gunicorn --pythonpath src wsgi:app --workers=2 --timeout 120 --bind 0.0.0.0:$PORT"
     envVars:
       - key: DEEPSEEK_API_KEY
-        value: your_deepseek_api_key_here
-      - key: PORT
-        value: 10000
+        value: your_api_key_here
