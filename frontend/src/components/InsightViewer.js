@@ -1,19 +1,25 @@
 import React from 'react';
 
-const InsightViewer = ({ insights }) => {
+const InsightViewer = ({ insights, onReset }) => {
   return (
     <div className="insights-container">
-      <h3>Executive Summary</h3>
+      <div className="header-row">
+        <h2>Analysis for: {insights.filename}</h2>
+        <button onClick={onReset} className="reset-btn">Analyze Another</button>
+      </div>
+
       <div className="card">
-        <ul className="key-points">
-          {insights.key_points?.map((point, i) => (
-            <li key={i}>{point}</li>
+        <div className="summary-content">
+          {insights.summary.split('###').map((section, index) => (
+            section.trim() ? (
+              <div key={index}>
+                <h3>{section.split('\n')[0].trim()}</h3>
+                <div className="section-content">
+                  {section.split('\n').slice(1).join('\n').trim()}
+                </div>
+              </div>
+            ) : null
           ))}
-        </ul>
-        
-        <h4>Detailed Analysis</h4>
-        <div className="detailed-summary">
-          {insights.summary}
         </div>
       </div>
       
