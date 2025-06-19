@@ -1,7 +1,8 @@
 .env
 __pycache__/
-node_modules/
-*.env
-*.log
+venv/
 *.pyc
+*.env
+node_modules/
 .DS_Store
+backend/tmp/
