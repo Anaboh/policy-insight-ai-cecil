@@ -1,4 +1,16 @@
+# Add this at the very top
+import sys
 import os
+
+print("\n===== DEBUG INFO =====")
+print(f"Python executable: {sys.executable}")
+print(f"Python version: {sys.version}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"System path: {sys.path}")
+print("======================\n")
+
+# Rest of the app.py code remains unchanged
+
 import tempfile
 import requests
 import logging
